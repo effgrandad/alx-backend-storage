@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 '''
 Task 9: Insert a document in Python
 '''

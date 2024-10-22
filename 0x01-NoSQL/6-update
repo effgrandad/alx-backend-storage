@@ -1,4 +1,4 @@
-/ Add new feature to documents in the school collection.
+// Add a new feature to documents in the school collection.
 // db.school.updateMany(
 //     {name: "Holberton school"},
 //     {$set: {address: "972 Mission street"}}
