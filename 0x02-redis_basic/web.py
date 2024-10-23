@@ -1,82 +1,39 @@
 #!/usr/bin/env python3
-'''
-A module that includes facilities for monitaring and caching requests
-'''
 
+from functools import wraps
 import redis
-import requests
-from functools import wraps
+from requests import get
 from typing import Callable
 
 
-redis_store = redis.Redis()
-'''
-The module-level Redis instance.
-'''
+redis_client = redis.Redis()
 
 
-def data_cacher(method: Callable) -> Callable:
+def responsed_cached_or_not(fn: Callable) -> Callable:
     '''
-    Caches the output of fetched data.
+    A simple decorator to cache a http request in redis
     '''
-    @wraps(method)
-    def invoker(url) -> str:
+    @wraps(fn)
+    def wrapper(url):
         '''
-        Wrapper function for caching the output.
+        The wrapper function which gets returned
+        by the decorator
         '''
-        redis_store.incr(f'count:{url}')
-        result = redis_store.get(f'result:{url}')
-        if result:
-            return result.decode('utf-8')
-        result = method(url)
-        redis_store.set(f'count:{url}', 0)
-        redis_store.setex(f'result:{url}', 10, result)
+        redis_client.incr(f"count:{url}")
+        cached_response = redis_client.get(f"cached:{url}")
+        if cached_response:
+            return cached_response.decode('utf-8')
+        result = fn(url)
+        redis_client.setex(f"cached:{url}", 10, result)
         return result
-    return invoker
+
+    return wrapper
 
 
-@data_cacher
+@responsed_cached_or_not
 def get_page(url: str) -> str:
     '''
-    trace the request, caches the response,
-    and then returns the content of a URL
+    A simple function to make http requests
+    to a certain endpoint
     '''
-    return requests.get(url).textimport redis
-
-import requests
-from functools import wraps
-from typing import Callable
-
-
-redis_store = redis.Redis()
-'''
-The module-level Redis instance.
-'''
-
-
-def data_cacher(method: Callable) -> Callable:
-    '''
-    Caches the output of fetched data.
-    '''
-    @wraps(method)
-    def invoker(url) -> str:
-        '''
-        The wrapper function for caching the output.
-        '''
-        redis_store.incr(f'count:{url}')
-        result = redis_store.get(f'result:{url}')
-        if result:
-            return result.decode('utf-8')
-        result = method(url)
-        redis_store.set(f'count:{url}', 0)
-        redis_store.setex(f'result:{url}', 10, result)
-        return result
-    return invoker
-
-
-@data_cacher
-def get_page(url: str) -> str:
-    '''traces the request, caches the response,
-    and then returns the content of a URL.
-    '''
-    return requests.get(url).text
+    return get(url).text
